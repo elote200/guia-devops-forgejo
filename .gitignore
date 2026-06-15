@@ -1,0 +1,21 @@
+# OS
+.DS_Store
+Thumbs.db
+
+# OpenWork
+.opencode/
+
+# Forgejo data (generado al correr)
+forgejo-server/forgejo-data/
+
+# .NET
+dotnet-app/src/bin/
+dotnet-app/src/obj/
+dotnet-app/tests/bin/
+dotnet-app/tests/obj/
+dotnet-app/**/TestResults/
+dotnet-app/**/.trx/
+
+# Forgejo runner cache
+forgejo-server/runner-config/.cache/
+forgejo-server/forgejo-data/

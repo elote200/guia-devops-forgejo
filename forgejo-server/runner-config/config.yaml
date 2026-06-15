@@ -1,0 +1,32 @@
+log:
+  level: info
+  job_level: info
+
+runner:
+  file: .runner
+  capacity: 2
+  timeout: 3h
+  shutdown_timeout: 30m
+  insecure: false
+  fetch_timeout: 30s
+  fetch_interval: 2s
+  report_interval: 1s
+
+container:
+  network: "forgejo-server_default"
+  privileged: false
+  docker_host: "automount"
+  force_pull: false
+  force_rebuild: false
+  valid_volumes:
+    - '**'
+
+server:
+  connections:
+    devops-forgejo:
+      url: http://forgejo:3000
+      uuid: "1a5534ea-cf2f-421c-8dc9-65a3ea1fbb2f"
+      token: "a712cdc1307617b8c45d439cd2de1470f916d003"
+      labels:
+        - ubuntu-latest:docker://node:20-bookworm
+        - dotnet:docker://mcr.microsoft.com/dotnet/sdk:8.0
