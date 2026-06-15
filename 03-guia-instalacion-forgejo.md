@@ -182,6 +182,8 @@ server:
 
 Guarda el archivo. El runner se conectará automáticamente al iniciar — no necesitas ejecutar `forgejo-runner register`.
 
+> **⚠️ Importante:** La web solo genera UUID + Token, **no incluye los labels**. Si no los agregas manualmente, el runner se registrará con `labels: []` vacío y ningún job podrá ejecutarse. Siempre añade los labels que usarás (ej: `ubuntu-latest`, `dotnet`) después del token.
+
 ### Paso 4: Verificar el Runner
 
 ```bash
