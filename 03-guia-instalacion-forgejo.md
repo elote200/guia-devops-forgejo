@@ -136,7 +136,7 @@ container:
 | `container.valid_volumes` | `['**']` | Permite montar cualquier volumen necesario |
 | `runner.capacity` | `2` | Hasta 2 jobs simultáneos |
 
-### Paso 3: Registrar el Runner
+### Paso 3: Registrar el Runner (desde la web — más fácil)
 
 Primero levantar los servicios:
 
@@ -144,43 +144,54 @@ Primero levantar los servicios:
 docker compose up -d
 ```
 
-Luego registrar el runner:
+Luego, desde la interfaz web de Forgejo:
 
-```bash
-# Reemplazar <TOKEN> con el token obtenido en el Paso 1
-docker compose exec forgejo-runner forgejo-runner register \
-  --instance http://forgejo:3000 \
-  --token <TOKEN> \
-  --name runner-principal \
-  --labels "ubuntu-latest:docker://node:20-bookworm,dotnet:docker://mcr.microsoft.com/dotnet/sdk:8.0"
-```
+1. Ir a **Site Administration** (⚙️ → "Site Administration")
+2. **Actions** → **Runners**
+3. Click en **"Set up runner"**
+4. Se genera un UUID + Token para el runner. Copia esos valores.
 
-El registro crea un bloque `server.connections` en `config.yaml` con un UUID y token únicos:
+![Set up runner en Forgejo](https://forgejo.org/assets/images/screenshots/runner-setup.png)
+
+Agrega el bloque `server.connections` en `runner-config/config.yaml` con los valores copiados:
 
 ```yaml
 server:
   connections:
-    devops-forgejo:
+    devops-runner:
       url: http://forgejo:3000
-      uuid: "1a5534ea-cf2f-421c-8dc9-65a3ea1fbb2f"
-      token: "a712cdc1307617b8c45d439cd2de1470f916d003"
+      uuid: "e69df7ba-ee0e-404b-99e1-d5853ac3218f"
+      token: "cc42bf4b17c6eb7a290b0e1ba442d308e320d928"
+```
+
+> **Importante:** La URL debe ser `http://forgejo:3000` (nombre del servicio Docker, **no** `localhost`). Si usas `localhost`, el runner intentará conectarse a sí mismo y fallará con `connection refused`.
+
+Luego agrega también los labels que usará el runner para ejecutar jobs:
+
+```yaml
+server:
+  connections:
+    devops-runner:
+      url: http://forgejo:3000
+      uuid: "e69df7ba-ee0e-404b-99e1-d5853ac3218f"
+      token: "cc42bf4b17c6eb7a290b0e1ba442d308e320d928"
       labels:
         - ubuntu-latest:docker://node:20-bookworm
         - dotnet:docker://mcr.microsoft.com/dotnet/sdk:8.0
 ```
 
+Guarda el archivo. El runner se conectará automáticamente al iniciar — no necesitas ejecutar `forgejo-runner register`.
+
 ### Paso 4: Verificar el Runner
 
-Reiniciar el runner para que cargue el registro:
-
 ```bash
-docker compose restart forgejo-runner
+docker compose start forgejo-runner
 ```
 
-En **Settings → Actions → Runners** de Forgejo, debe aparecer el runner como `idle`:
+En **Site Administration → Actions → Runners** de Forgejo, debe aparecer el runner como `idle`:
 
 ```
-Runner: runner-principal   Status: 🟢 Idle   Labels: ubuntu-latest, dotnet
+Runner: devops-runner   Status: 🟢 Idle   Labels: ubuntu-latest, dotnet
 ```
 
 Para verificar el estado desde terminal:
@@ -188,8 +199,10 @@ Para verificar el estado desde terminal:
 ```bash
 docker logs forgejo-runner --tail 10
 ```
+Deberías ver:
 ```
-time="2026-06-14T23:18:58Z" level=info msg="task 47 repo is super/devops-lab http://forgejo:3000"
+runner: devops-runner, with version: v12.11.1, with labels: [ubuntu-latest dotnet], ephemeral: false, declared successfully
+[poller] launched
 ```
 
 ---
@@ -203,7 +216,7 @@ Los **labels** definen en qué contenedor se ejecutará cada job del pipeline:
 | `ubuntu-latest` | `node:20-bookworm` | Compilación, pruebas HTTP, deploy |
 | `dotnet` | `mcr.microsoft.com/dotnet/sdk:8.0` | Build y test .NET |
 
-Los labels se declaran tanto en `runner.labels` del `config.yaml` como al momento del registro. Ambos deben coincidir.
+Los labels se declaran dentro del bloque `server.connections` en `config.yaml`, bajo la conexión del runner:
 
 > **Nota:** El runner ejecuta jobs en contenedores efímeros que comparten la red `forgejo-server_default`. Esto permite que los jobs accedan a contenedores de aplicación por nombre (ej: `http://devops-demo-test:5000`), resolviendo los problemas de resolución DNS típicos de DIND.
 
@@ -225,6 +238,16 @@ ls -la /var/run/docker.sock
 ```
 
 ### Error: "Runner cannot connect to Forgejo"
+
+**Causa más común:** La URL en `config.yaml` usa `localhost` en vez del nombre del servicio Docker.
+
+```yaml
+# ❌ MAL — localhost apunta al propio contenedor
+url: http://localhost:3000
+
+# ✅ BIEN — forgejo es el nombre del servicio en docker-compose
+url: http://forgejo:3000
+```
 
 ```bash
 # Verificar redes
